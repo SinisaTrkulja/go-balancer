@@ -1,8 +1,0 @@
-- investigate healthcheck mechanism
-- improve error handling
-- add tls options
-- ipv4 & ipv6
-- long lived connections
-- flags and config file
-- concurrency healthcheck
-- retry mechanism
