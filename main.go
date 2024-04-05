@@ -18,7 +18,6 @@ var getService = func() Backend {
 type Backend struct {
 	address string
 	isAlive bool
-	ipv6    bool
 	mux     *sync.RWMutex
 }
 
@@ -27,8 +26,8 @@ var counter int
 var responseTimes map[string]time.Duration
 
 func main() {
-	strategyFlag, portFlag, ipv6Flag, backendsFlag, timeoutFlag := parseFlags()
-	backends = parseBackends(*backendsFlag, *ipv6Flag)
+	strategyFlag, portFlag, backendsFlag, timeoutFlag := parseFlags()
+	backends = parseBackends(*backendsFlag)
 	getService = getStrategy(*strategyFlag)
 
 	s := &http.Server{
@@ -53,15 +52,22 @@ func main() {
 type myHandler struct{}
 
 func (m myHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	response := forwardRequest(writer, request)
+	response, err := forwardRequest(writer, request)
+	if err != nil {
+		http.Error(writer, err.Error(), 500)
+		return
+	}
+
 	byteArray, err := io.ReadAll(response.Body)
 	if err != nil {
 		http.Error(writer, err.Error(), 500)
+		return
 	}
 
 	err = response.Body.Close()
 	if err != nil {
 		http.Error(writer, err.Error(), 500)
+		return
 	}
 
 	writer.WriteHeader(response.StatusCode)
@@ -69,6 +75,7 @@ func (m myHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) 
 
 	if err != nil {
 		http.Error(writer, err.Error(), 500)
+		return
 	}
 	log.Println(request)
 }

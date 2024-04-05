@@ -11,10 +11,21 @@ import (
 	"time"
 )
 
-func parseFlags() (*string, *int, *bool, *string, *time.Duration) {
+var handleConnection = func(writer http.ResponseWriter, request *http.Request, address string) (*http.Response, error) {
+	request, err := http.NewRequest(
+		request.Method,
+		fmt.Sprintf("http://%s%s", address, request.RequestURI),
+		request.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return http.DefaultClient.Do(request)
+}
+
+func parseFlags() (*string, *int, *string, *time.Duration) {
 	strategyFlag := flag.String("strategy", "random", "Target-choosing strategy")
 	portFlag := flag.Int("port", 8080, "Load balancer port")
-	ipv6Flag := flag.Bool("ipv6", false, "Specify whether ipv6")
 	backendsFlag := flag.String("services", "", "Pass in the comma-separated service URLs")
 	timeoutFlag := flag.Duration("timeout", 10*time.Second, "Pass in the timeout")
 	flag.Parse()
@@ -26,10 +37,10 @@ func parseFlags() (*string, *int, *bool, *string, *time.Duration) {
 		panic("Invalid port")
 	}
 
-	return strategyFlag, portFlag, ipv6Flag, backendsFlag, timeoutFlag
+	return strategyFlag, portFlag, backendsFlag, timeoutFlag
 }
 
-func forwardRequest(writer http.ResponseWriter, request *http.Request) *http.Response {
+func forwardRequest(writer http.ResponseWriter, request *http.Request) (*http.Response, error) {
 	var backend Backend
 	for {
 		backend = getService()
@@ -37,34 +48,14 @@ func forwardRequest(writer http.ResponseWriter, request *http.Request) *http.Res
 			break
 		}
 	}
-	response, err := handleConnection(writer, request, backend.address)
-	if err != nil {
-		http.Error(writer, err.Error(), 500)
-	}
-	return response
+	return handleConnection(writer, request, backend.address)
 }
 
-var handleConnection = func(writer http.ResponseWriter, request *http.Request, address string) (*http.Response, error) {
-	request, err := http.NewRequest(
-		request.Method,
-		fmt.Sprintf("http://%s%s", address, request.RequestURI),
-		request.Body)
-
-	if err != nil {
-		http.Error(writer, err.Error(), 500)
-	}
-	return http.DefaultClient.Do(request)
-}
-
-func parseBackends(backendsArg string, ipv6 bool) []Backend {
-	if len(strings.TrimSpace(backendsArg)) == 0 {
-		panic("No services passed")
-	}
-
+func parseBackends(backendsArg string) []Backend {
 	bknds := strings.Split(backendsArg, ",")
 	newBknds := make([]Backend, len(bknds))
 	for i := range bknds {
-		newBknds[i] = Backend{bknds[i], true, ipv6, &sync.RWMutex{}}
+		newBknds[i] = Backend{bknds[i], true, &sync.RWMutex{}}
 	}
 	return newBknds
 }

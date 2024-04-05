@@ -5,11 +5,10 @@
 
 Notes to self for improvement:
 
-- investigate healthcheck mechanism
-- improve error handling
-- add tls options
-- ipv4 & ipv6 parsing
-- long lived connections
-- flags and config file
-- retry mechanism
-- add benchmarking
+- [x] error handling
+- [ ] ipv4 & ipv6 parsing
+- [ ] long lived connections
+- [ ] flags and config file
+- [ ] retry mechanism
+- [ ] add tls options
+- [ ] add benchmarking
